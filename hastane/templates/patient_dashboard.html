@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hasta Paneli</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Hoş geldiniz, {{ kullanici_ad }}!</h1>
+        <nav>
+            <a href="{{ url_for('patient_dashboard') }}">Ana Sayfa</a>
+            <a href="{{ url_for('logout') }}">Çıkış Yap</a>
+        </nav>
+    </header>
+    <main>
+        <h2>Randevularınız</h2>
+        <ul>
+            {% for randevu in randevular %}
+            <li>
+                <strong>Tarih:</strong> {{ randevu.tarih }} - <strong>Saat:</strong> {{ randevu.saat }} 
+                <br>
+                <strong>Doktor:</strong> {{ randevu.doktor.ad }} {{ randevu.doktor.soyad }}
+            </li>
+            {% endfor %}
+        </ul>
+        <a href="{{ url_for('randevu_al') }}">Yeni Randevu Al</a>
+    </main>
+</body>
+</html>

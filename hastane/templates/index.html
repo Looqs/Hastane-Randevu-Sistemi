@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ana Sayfa</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Hastane Randevu Sistemi</h1>
+    <p>Hastanemize hoş geldiniz! Randevu almak için giriş yapın veya kayıt olun.</p>
+    
+    <div class="menu">
+        <button onclick="location.href='{{ url_for('login') }}'">Giriş Yap</button>
+        <button onclick="location.href='{{ url_for('register') }}'">Kayıt Ol</button>
+    </div>
+</body>
+</html>
