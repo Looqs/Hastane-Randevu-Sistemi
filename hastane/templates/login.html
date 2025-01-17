@@ -1,21 +1,95 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giriş Yap</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block title %}Giriş Yap{% endblock %}
+
+{% block content %}
+<div class="auth-container">
     <h1>Giriş Yap</h1>
-    <form method="POST" action="{{ url_for('login') }}">
-        <label for="email">E-posta:</label>
-        <input type="email" name="email" required>
-        
-        <label for="password">Şifre:</label>
-        <input type="password" name="sifre" required>
-        
-        <button type="submit">Giriş Yap</button>
+    
+    <form action="{{ url_for('login') }}" method="POST" class="form">
+        <div class="form-group">
+            <label for="email">E-posta:</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+
+        <div class="form-group">
+            <label for="sifre">Şifre:</label>
+            <input type="password" id="sifre" name="sifre" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Giriş Yap</button>
     </form>
-</body>
-</html>
+
+    <div class="auth-links">
+        Hesabınız yok mu? <a href="{{ url_for('register') }}">Kayıt Olun</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .auth-container {
+        max-width: 400px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .auth-container h1 {
+        text-align: center;
+        color: var(--primary-color);
+        margin-bottom: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: var(--dark-gray);
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
+    }
+
+    .btn-primary {
+        width: 100%;
+        background-color: var(--primary-color);
+        color: white;
+        padding: 0.75rem;
+        border: none;
+        border-radius: 4px;
+        font-size: 1rem;
+        cursor: pointer;
+        margin-top: 1rem;
+    }
+
+    .btn-primary:hover {
+        background-color: var(--primary-dark);
+    }
+
+    .auth-links {
+        text-align: center;
+        margin-top: 1rem;
+        color: var(--dark-gray);
+    }
+
+    .auth-links a {
+        color: var(--primary-color);
+        text-decoration: none;
+    }
+
+    .auth-links a:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}

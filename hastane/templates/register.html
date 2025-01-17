@@ -1,23 +1,187 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kayıt Ol</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block title %}Kayıt Ol{% endblock %}
+
+{% block content %}
+<div class="auth-container">
     <h1>Kayıt Ol</h1>
-    <form action="{{ url_for('register') }}" method="POST">
-        <label for="ad">Ad:</label>
-        <input type="text" id="ad" name="ad" required>
-        <label for="soyad">Soyad:</label>
-        <input type="text" id="soyad" name="soyad" required>
-        <label for="email">E-posta:</label>
-        <input type="email" id="email" name="email" required>
-        <label for="sifre">Şifre:</label>
-        <input type="password" id="sifre" name="sifre" required>
-        <button type="submit">Kayıt Ol</button>
+    
+    <form action="{{ url_for('register') }}" method="POST" class="form">
+        <div class="form-group">
+            <label for="ad">Ad:</label>
+            <input type="text" id="ad" name="ad" required minlength="2" maxlength="50">
+        </div>
+
+        <div class="form-group">
+            <label for="soyad">Soyad:</label>
+            <input type="text" id="soyad" name="soyad" required minlength="2" maxlength="50">
+        </div>
+
+        <div class="form-group">
+            <label for="email">E-posta:</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+
+        <div class="form-group">
+            <label for="telefon">Telefon:</label>
+            <input type="tel" id="telefon" name="telefon" 
+                   maxlength="13" 
+                   placeholder="5XX XXX XX XX" 
+                   required>
+            <small class="form-text text-muted">Örnek: 5XX XXX XX XX (0 ile başlayamaz)</small>
+        </div>
+
+        <div class="form-group">
+            <label for="sifre">Şifre:</label>
+            <input type="password" id="sifre" name="sifre" required minlength="6">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Kayıt Ol</button>
     </form>
-</body>
-</html>
+
+    <div class="auth-links">
+        Zaten hesabınız var mı? <a href="{{ url_for('login') }}">Giriş Yapın</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .auth-container {
+        max-width: 400px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .auth-container h1 {
+        text-align: center;
+        color: var(--primary-color);
+        margin-bottom: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: var(--dark-gray);
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
+    }
+
+    .form-text {
+        font-size: 0.875rem;
+        color: #666;
+        margin-top: 0.25rem;
+    }
+
+    input[type="tel"] {
+        letter-spacing: 1px;
+        font-family: monospace;
+    }
+
+    .btn-primary {
+        width: 100%;
+        background-color: var(--primary-color);
+        color: white;
+        padding: 0.75rem;
+        border: none;
+        border-radius: 4px;
+        font-size: 1rem;
+        cursor: pointer;
+        margin-top: 1rem;
+    }
+
+    .btn-primary:hover {
+        background-color: var(--primary-dark);
+    }
+
+    .auth-links {
+        text-align: center;
+        margin-top: 1rem;
+        color: var(--dark-gray);
+    }
+
+    .auth-links a {
+        color: var(--primary-color);
+        text-decoration: none;
+    }
+
+    .auth-links a:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Telefon numarası formatlama
+    document.getElementById('telefon').addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, ''); // Sadece rakamları al
+        
+        // 0 ile başlıyorsa ilk karakteri kaldır
+        if (value.startsWith('0')) {
+            value = value.substring(1);
+        }
+        
+        // Maksimum 10 rakam
+        value = value.substring(0, 10);
+        
+        // Formatlama: XXX XXX XX XX
+        if (value.length >= 3) {
+            value = value.substring(0, 3) + ' ' + value.substring(3);
+        }
+        if (value.length >= 7) {
+            value = value.substring(0, 7) + ' ' + value.substring(7);
+        }
+        if (value.length >= 10) {
+            value = value.substring(0, 10) + ' ' + value.substring(10);
+        }
+        
+        e.target.value = value.trim();
+    });
+
+    // Form gönderilmeden önce kontrol
+    document.querySelector('form').addEventListener('submit', function(e) {
+        e.preventDefault(); // Önce formu durdur
+        
+        let telefon = document.getElementById('telefon');
+        let temizNumara = telefon.value.replace(/\s/g, '');
+        
+        // Numara kontrolü
+        if (temizNumara.length !== 10) {
+            telefon.setCustomValidity('Telefon numarası 10 haneli olmalıdır');
+            telefon.reportValidity();
+            return;
+        }
+        
+        if (temizNumara.startsWith('0')) {
+            telefon.setCustomValidity('Telefon numarası 0 ile başlayamaz');
+            telefon.reportValidity();
+            return;
+        }
+        
+        if (!/^[1-9][0-9]{9}$/.test(temizNumara)) {
+            telefon.setCustomValidity('Geçersiz telefon numarası formatı');
+            telefon.reportValidity();
+            return;
+        }
+        
+        // Tüm kontroller geçtiyse
+        telefon.value = temizNumara; // Boşlukları kaldır
+        telefon.setCustomValidity(''); // Hata mesajını temizle
+        e.target.submit(); // Formu gönder
+    });
+</script>
+{% endblock %}

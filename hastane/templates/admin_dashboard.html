@@ -1,0 +1,866 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Paneli - Hastane Randevu Sistemi{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Admin Paneli</h2>
+
+    <!-- Doktor ve Departman Ekleme -->
+    <div class="row mt-4">
+        <!-- Doktor Ekleme -->
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">Yeni Doktor Ekle</h3>
+                </div>
+                <div class="card-body">
+                    <form id="doktorEkleForm">
+                        <div class="form-group mb-3">
+                            <label for="ad">Ad:</label>
+                            <input type="text" class="form-control" id="ad" name="ad" required>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="soyad">Soyad:</label>
+                            <input type="text" class="form-control" id="soyad" name="soyad" required>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="email">E-posta:</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="telefon">Telefon:</label>
+                            <input type="tel" class="form-control" id="telefon" name="telefon" required>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="departman">Departman:</label>
+                            <select class="form-control" id="departman" name="departman_id" required>
+                                <option value="">Departman Seçin</option>
+                                {% for departman in departmanlar %}
+                                    <option value="{{ departman.id }}">{{ departman.ad }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="uzmanlik">Uzmanlık:</label>
+                            <input type="text" class="form-control" id="uzmanlik" name="uzmanlik" required>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="sifre">Şifre:</label>
+                            <input type="password" class="form-control" id="sifre" name="sifre" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Doktor Ekle</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Departmanlar Bölümü -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="mb-0">Departmanlar</h3>
+                    <button class="btn btn-primary" onclick="yeniDepartmanEkle()">
+                        <i class="fas fa-plus"></i> Yeni Departman Ekle
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Departman Adı</th>
+                                    <th>Açıklama</th>
+                                    <th>Doktor Sayısı</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for departman in departmanlar %}
+                                <tr>
+                                    <td>{{ departman.ad }}</td>
+                                    <td>{{ departman.aciklama }}</td>
+                                    <td>{{ departman.doktorlar|length }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-info" onclick="departmanDuzenle('{{ departman.id }}', '{{ departman.ad }}', '{{ departman.aciklama }}')">
+                                            <i class="fas fa-edit"></i> Düzenle
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="departmanSil('{{ departman.id }}')">
+                                            <i class="fas fa-trash"></i> Sil
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kullanıcı Listesi -->
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="mb-0">Kullanıcı Listesi</h3>
+            <div class="form-group mb-0" style="width: 200px;">
+                <select class="form-control" id="roleFilter" onchange="filtreUygula()">
+                    <option value="tumu">Tümü</option>
+                    <option value="hasta">Hastalar</option>
+                    <option value="doktor">Doktorlar</option>
+                    <option value="admin">Adminler</option>
+                </select>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Ad Soyad</th>
+                            <th>Email</th>
+                            <th>Telefon</th>
+                            <th>Rol</th>
+                            <th>Durum</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for kullanici in kullanicilar %}
+                        <tr data-rol="{{ kullanici.rol }}">
+                            <td>{{ kullanici.ad }} {{ kullanici.soyad }}</td>
+                            <td>{{ kullanici.email }}</td>
+                            <td>{{ kullanici.telefon }}</td>
+                            <td>{{ kullanici.rol }}</td>
+                            <td>
+                                <span class="badge {% if kullanici.aktif %}bg-success{% else %}bg-danger{% endif %}">
+                                    {{ 'Aktif' if kullanici.aktif else 'Pasif' }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if kullanici.id != session.kullanici_id %}
+                                <button class="btn btn-sm btn-primary kullanici-duzenle-btn" 
+                                        data-id="{{ kullanici.id }}"
+                                        data-ad="{{ kullanici.ad }}"
+                                        data-soyad="{{ kullanici.soyad }}"
+                                        data-email="{{ kullanici.email }}"
+                                        data-telefon="{{ kullanici.telefon }}"
+                                        data-rol="{{ kullanici.rol }}"
+                                        data-aktif="{{ 'true' if kullanici.aktif else 'false' }}">
+                                    <i class="fas fa-edit"></i> Düzenle
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Randevu Listesi -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h3>Randevu Listesi</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Hasta</th>
+                            <th>Doktor</th>
+                            <th>Tarih</th>
+                            <th>Saat</th>
+                            <th>Durum</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for randevu in randevular %}
+                        <tr>
+                            <td>{{ randevu.hasta.ad }} {{ randevu.hasta.soyad }}</td>
+                            <td>{{ randevu.doktor.ad }} {{ randevu.doktor.soyad }}</td>
+                            <td>{{ randevu.tarih.strftime('%d.%m.%Y') }}</td>
+                            <td>{{ randevu.saat }}</td>
+                            <td>
+                                <span class="badge {% if randevu.durum == 'onaylandı' %}bg-success
+                                      {% elif randevu.durum == 'beklemede' %}bg-warning
+                                      {% else %}bg-danger{% endif %}">
+                                    {{ randevu.durum.replace('_', ' ').upper() }}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-primary randevu-duzenle-btn" 
+                                        data-id="{{ randevu.id }}"
+                                        data-tarih="{{ randevu.tarih.strftime('%Y-%m-%d') }}"
+                                        data-saat="{{ randevu.saat }}"
+                                        data-durum="{{ randevu.durum }}">
+                                    <i class="fas fa-edit"></i> Düzenle
+                                </button>
+                                <button class="btn btn-sm btn-danger randevu-sil-btn" data-id="{{ randevu.id }}">
+                                    <i class="fas fa-trash"></i> Sil
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Doktor ekleme formu
+    document.getElementById('doktorEkleForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        fetch('/doktor_ekle', {
+            method: 'POST',
+            body: new FormData(this)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    title: 'Başarılı!',
+                    text: data.message,
+                    icon: 'success'
+                }).then(() => {
+                    location.reload();
+                });
+            } else {
+                Swal.fire({
+                    title: 'Hata!',
+                    text: data.message,
+                    icon: 'error'
+                });
+            }
+        })
+        .catch(error => {
+            Swal.fire({
+                title: 'Hata!',
+                text: 'Bir hata oluştu.',
+                icon: 'error'
+            });
+        });
+    });
+
+    // Kullanıcı düzenleme
+    document.querySelectorAll('.kullanici-duzenle-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const kullaniciId = this.dataset.id;
+            const aktif = this.dataset.aktif === 'true';
+            const ad = this.dataset.ad;
+            const soyad = this.dataset.soyad;
+            const email = this.dataset.email;
+            const telefon = this.dataset.telefon;
+            const rol = this.dataset.rol;
+            
+            Swal.fire({
+                title: 'Kullanıcı İşlemleri',
+                html: `
+                    <div class="text-start">
+                        <p class="mb-2"><strong>Ad:</strong> ${ad}</p>
+                        <p class="mb-2"><strong>Soyad:</strong> ${soyad}</p>
+                        <p class="mb-2"><strong>Email:</strong> ${email}</p>
+                        <p class="mb-2"><strong>Telefon:</strong> ${telefon}</p>
+                        <p class="mb-2"><strong>Rol:</strong> ${rol}</p>
+                        <p class="mb-3">
+                            <strong>Durum:</strong> 
+                            <span class="badge ${aktif ? 'bg-success' : 'bg-danger'}">
+                                ${aktif ? 'Aktif' : 'Pasif'}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="d-flex flex-column gap-2">
+                        <button type="button" class="btn btn-warning" onclick="durumDegistir('${kullaniciId}')">
+                            <i class="fas fa-sync"></i> Durumu Güncelle
+                        </button>
+                        <button type="button" class="btn btn-danger" onclick="kullaniciSil('${kullaniciId}')">
+                            <i class="fas fa-trash"></i> Kullanıcıyı Sil
+                        </button>
+                    </div>
+                `,
+                showConfirmButton: false,
+                showCancelButton: true,
+                cancelButtonText: 'Kapat',
+                customClass: {
+                    container: 'my-swal'
+                }
+            });
+        });
+    });
+
+    // Randevu düzenleme butonları
+    document.querySelectorAll('.randevu-duzenle-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const randevuId = this.dataset.id;
+            const tarih = this.dataset.tarih;
+            const saat = this.dataset.saat;
+            const durum = this.dataset.durum;
+            randevuDuzenle(randevuId, tarih, saat, durum);
+        });
+    });
+
+    // Randevu silme butonları
+    document.querySelectorAll('.randevu-sil-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const randevuId = this.dataset.id;
+            randevuSil(randevuId);
+        });
+    });
+});
+
+function durumDegistir(kullaniciId) {
+    Swal.fire({
+        title: 'Durum Değiştirme',
+        text: 'Kullanıcının durumunu değiştirmek istediğinizden emin misiniz?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Evet',
+        cancelButtonText: 'İptal',
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/kullanici_durum_degistir/${kullaniciId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Sunucu hatası');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: 'Başarılı!',
+                        text: data.message,
+                        icon: 'success'
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    throw new Error(data.message || 'Bir hata oluştu');
+                }
+            })
+            .catch(error => {
+                Swal.fire({
+                    title: 'Hata!',
+                    text: error.message,
+                    icon: 'error'
+                });
+            });
+        }
+    });
+}
+
+function kullaniciSil(kullaniciId) {
+    Swal.fire({
+        title: 'Emin misiniz?',
+        text: "Bu kullanıcıyı silmek istediğinize emin misiniz?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Evet, sil!',
+        cancelButtonText: 'İptal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/kullanici_sil/${kullaniciId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: 'Silindi!',
+                        text: data.message,
+                        icon: 'success'
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Hata!',
+                        text: data.message || 'Bir hata oluştu.',
+                        icon: 'error'
+                    });
+                }
+            })
+            .catch(error => {
+                Swal.fire({
+                    title: 'Hata!',
+                    text: 'Bir hata oluştu.',
+                    icon: 'error'
+                });
+            });
+        }
+    });
+}
+
+function filtreUygula() {
+    const seciliRol = document.getElementById('roleFilter').value;
+    const satirlar = document.querySelectorAll('tbody tr[data-rol]');
+
+    satirlar.forEach(satir => {
+        const kullaniciRol = satir.getAttribute('data-rol');
+        if (seciliRol === 'tumu' || kullaniciRol === seciliRol) {
+            satir.style.display = '';
+        } else {
+            satir.style.display = 'none';
+        }
+    });
+}
+
+function randevuSil(randevuId) {
+    Swal.fire({
+        title: 'Emin misiniz?',
+        text: "Bu randevuyu silmek istediğinize emin misiniz?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Evet, sil!',
+        cancelButtonText: 'İptal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/randevu_sil/${randevuId}`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire(
+                        'Silindi!',
+                        'Randevu başarıyla silindi.',
+                        'success'
+                    ).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire(
+                        'Hata!',
+                        data.message || 'Bir hata oluştu.',
+                        'error'
+                    );
+                }
+            })
+            .catch(error => {
+                Swal.fire(
+                    'Hata!',
+                    'Bir hata oluştu.',
+                    'error'
+                );
+            });
+        }
+    });
+}
+
+function randevuDuzenle(randevuId, mevcutTarih, mevcutSaat, mevcutDurum) {
+    // Minimum tarih olarak bugünü ayarla
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Randevu saatleri
+    const saatler = [
+        '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+        '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+        '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00'
+    ];
+    
+    // Saat seçeneklerini oluştur
+    let saatOptions = saatler.map(saat => 
+        `<option value="${saat}" ${saat === mevcutSaat ? 'selected' : ''}>${saat}</option>`
+    ).join('');
+    
+    // Durum seçenekleri
+    const durumlar = ['beklemede', 'onaylandı', 'iptal_edildi'];
+    let durumOptions = durumlar.map(durum => 
+        `<option value="${durum}" ${durum === mevcutDurum ? 'selected' : ''}>${durum.replace('_', ' ').toUpperCase()}</option>`
+    ).join('');
+
+    Swal.fire({
+        title: 'Randevu Düzenle',
+        html: `
+            <div class="form-group">
+                <label for="yeni_tarih">Tarih:</label>
+                <input type="date" id="yeni_tarih" class="form-control" value="${mevcutTarih}" min="${today}">
+            </div>
+            <div class="form-group">
+                <label for="yeni_saat">Saat:</label>
+                <select id="yeni_saat" class="form-control">
+                    ${saatOptions}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="yeni_durum">Durum:</label>
+                <select id="yeni_durum" class="form-control">
+                    ${durumOptions}
+                </select>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Güncelle',
+        cancelButtonText: 'İptal',
+        preConfirm: () => {
+            return {
+                tarih: document.getElementById('yeni_tarih').value,
+                saat: document.getElementById('yeni_saat').value,
+                durum: document.getElementById('yeni_durum').value
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/randevu_guncelle/${randevuId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(result.value)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire(
+                        'Güncellendi!',
+                        'Randevu başarıyla güncellendi.',
+                        'success'
+                    ).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire(
+                        'Hata!',
+                        data.message || 'Bir hata oluştu.',
+                        'error'
+                    );
+                }
+            })
+            .catch(error => {
+                Swal.fire(
+                    'Hata!',
+                    'Bir hata oluştu.',
+                    'error'
+                );
+            });
+        }
+    });
+}
+
+function yeniDepartmanEkle() {
+    Swal.fire({
+        title: 'Yeni Departman Ekle',
+        html: `
+            <div class="form-group">
+                <label for="departmanAd" class="text-left">Departman Adı:</label>
+                <input type="text" id="departmanAd" class="form-control" required>
+            </div>
+            <div class="form-group mt-3">
+                <label for="departmanAciklama" class="text-left">Açıklama:</label>
+                <textarea id="departmanAciklama" class="form-control" rows="3"></textarea>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Ekle',
+        cancelButtonText: 'İptal',
+        preConfirm: () => {
+            const ad = document.getElementById('departmanAd').value;
+            const aciklama = document.getElementById('departmanAciklama').value;
+            
+            if (!ad) {
+                Swal.showValidationMessage('Departman adı zorunludur!');
+                return false;
+            }
+            
+            return { ad, aciklama };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const formData = new FormData();
+            formData.append('ad', result.value.ad);
+            formData.append('aciklama', result.value.aciklama);
+            
+            fetch('/departman_ekle', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire(
+                        'Başarılı!',
+                        'Departman başarıyla eklendi.',
+                        'success'
+                    ).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire(
+                        'Hata!',
+                        data.message || 'Bir hata oluştu.',
+                        'error'
+                    );
+                }
+            });
+        }
+    });
+}
+
+function departmanDuzenle(id, ad, aciklama) {
+    Swal.fire({
+        title: 'Departman Düzenle',
+        html: `
+            <div class="form-group">
+                <label for="departmanAd" class="text-left">Departman Adı:</label>
+                <input type="text" id="departmanAd" class="form-control" value="${ad}" required>
+            </div>
+            <div class="form-group mt-3">
+                <label for="departmanAciklama" class="text-left">Açıklama:</label>
+                <textarea id="departmanAciklama" class="form-control" rows="3">${aciklama}</textarea>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Güncelle',
+        cancelButtonText: 'İptal',
+        preConfirm: () => {
+            const yeniAd = document.getElementById('departmanAd').value;
+            const yeniAciklama = document.getElementById('departmanAciklama').value;
+            
+            if (!yeniAd) {
+                Swal.showValidationMessage('Departman adı zorunludur!');
+                return false;
+            }
+            
+            return { ad: yeniAd, aciklama: yeniAciklama };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/departman_guncelle/${id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(result.value)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire(
+                        'Başarılı!',
+                        'Departman başarıyla güncellendi.',
+                        'success'
+                    ).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire(
+                        'Hata!',
+                        data.message || 'Bir hata oluştu.',
+                        'error'
+                    );
+                }
+            });
+        }
+    });
+}
+
+function departmanSil(id) {
+    Swal.fire({
+        title: 'Emin misiniz?',
+        text: "Bu departmanı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Evet, sil!',
+        cancelButtonText: 'İptal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/departman_sil/${id}`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire(
+                        'Silindi!',
+                        'Departman başarıyla silindi.',
+                        'success'
+                    ).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire(
+                        'Hata!',
+                        data.message || 'Bir hata oluştu.',
+                        'error'
+                    );
+                }
+            });
+        }
+    });
+}
+
+// Stil ekleyelim
+const style = document.createElement('style');
+style.textContent = `
+.my-swal {
+    z-index: 9999;
+}
+.my-swal .text-start {
+    text-align: left !important;
+}
+.my-swal p {
+    margin-bottom: 0.5rem;
+}
+.my-swal .badge {
+    padding: 0.5em 0.8em;
+}
+.my-swal .btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem 1rem;
+}
+.my-swal .d-flex {
+    display: flex;
+}
+.my-swal .flex-column {
+    flex-direction: column;
+}
+.my-swal .gap-2 {
+    gap: 0.5rem;
+}
+`;
+document.head.appendChild(style);
+</script>
+
+<style>
+.swal2-popup .form-group {
+    margin-bottom: 1rem;
+    text-align: left;
+}
+
+.swal2-popup .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+.swal2-popup .form-control {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    height: 38px;
+}
+
+/* Tablo stilleri */
+.table {
+    margin-bottom: 0;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    color: #495057;
+    font-weight: 600;
+}
+
+.table td {
+    vertical-align: middle;
+    color: #212529;
+    background-color: #fff;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.table td .btn {
+    margin: 0 2px;
+}
+
+/* Form stilleri */
+.form-group label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.form-control {
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 0.375rem 0.75rem;
+}
+
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+textarea.form-control {
+    min-height: 100px;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.btn-group-sm > .btn,
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    border-radius: 0.2rem;
+}
+
+.btn-sm + .btn-sm {
+    margin-left: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .card-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .card-header button {
+        width: 100%;
+    }
+    
+    .table-responsive {
+        margin: 0 -1rem;
+    }
+    
+    .btn-sm + .btn-sm {
+        margin-left: 0;
+        margin-top: 0.5rem;
+    }
+    
+    td .btn {
+        display: block;
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}

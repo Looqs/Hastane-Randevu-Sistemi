@@ -1,18 +1,49 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ana Sayfa</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
-<body>
-    <h1>Hastane Randevu Sistemi</h1>
-    <p>Hastanemize hoş geldiniz! Randevu almak için giriş yapın veya kayıt olun.</p>
+{% extends "base.html" %}
+
+{% block title %}Ana Sayfa{% endblock %}
+
+{% block content %}
+<div class="welcome-section">
+    <h1>Hastane Randevu Sistemine Hoş Geldiniz</h1>
+    <p>Sağlık hizmetlerimizden yararlanmak için lütfen giriş yapın veya kayıt olun.</p>
     
-    <div class="menu">
-        <button onclick="location.href='{{ url_for('login') }}'">Giriş Yap</button>
-        <button onclick="location.href='{{ url_for('register') }}'">Kayıt Ol</button>
+    <div class="action-buttons">
+        <a href="{{ url_for('login') }}" class="btn btn-primary">Giriş Yap</a>
+        <a href="{{ url_for('register') }}" class="btn">Kayıt Ol</a>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .welcome-section {
+        text-align: center;
+        padding: 4rem 1rem;
+    }
+
+    .welcome-section h1 {
+        margin-bottom: 1rem;
+        color: var(--primary-color);
+    }
+
+    .welcome-section p {
+        margin-bottom: 2rem;
+        color: #666;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+    }
+
+    .btn-primary {
+        background-color: var(--primary-color);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: var(--primary-dark);
+    }
+</style>
+{% endblock %}

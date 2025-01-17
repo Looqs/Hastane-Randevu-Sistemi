@@ -1,32 +1,322 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yeni Randevu Al</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
-<body>
-    <header>
-        <h1>Yeni Randevu Al</h1>
-    </header>
-    <main>
-        <form method="POST">
-            <label for="doktor_id">Doktor Seçin:</label>
-            <select id="doktor_id" name="doktor_id" required>
-                {% for doktor in doktorlar %}
-                <option value="{{ doktor.id }}">{{ doktor.ad }} {{ doktor.soyad }} - {{ doktor.uzmanlik }}</option>
-                {% endfor %}
-            </select>
-            <br>
-            <label for="tarih">Tarih:</label>
-            <input type="date" id="tarih" name="tarih" required>
-            <br>
-            <label for="saat">Saat:</label>
-            <input type="time" id="saat" name="saat" required>
-            <br>
-            <button type="submit">Randevu Al</button>
-        </form>
-    </main>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Randevu Al{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="mb-0">Randevu Al</h3>
+        </div>
+        <div class="card-body">
+            <!-- Adım 1: Departman Seçimi -->
+            <div id="step1" class="booking-step active">
+                <h4 class="step-title">
+                    <span class="step-number">1</span>
+                    Departman Seçimi
+                </h4>
+                <div class="departman-listesi">
+                    {% for departman in departmanlar %}
+                    <div class="departman-card" onclick="departmanSec('{{ departman.id }}', '{{ departman.ad }}')">
+                        <h5>{{ departman.ad }}</h5>
+                        <p>{{ departman.aciklama }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Adım 2: Doktor Seçimi -->
+            <div id="step2" class="booking-step">
+                <h4 class="step-title">
+                    <span class="step-number">2</span>
+                    Doktor Seçimi
+                    <button class="btn btn-link btn-sm step-back" onclick="geriGit(1)">
+                        <i class="fas fa-arrow-left"></i> Geri
+                    </button>
+                </h4>
+                <div id="doktorListesi" class="doktor-listesi">
+                    <!-- Doktorlar JavaScript ile doldurulacak -->
+                </div>
+            </div>
+
+            <!-- Adım 3: Randevu Detayları -->
+            <div id="step3" class="booking-step">
+                <h4 class="step-title">
+                    <span class="step-number">3</span>
+                    Randevu Detayları
+                    <button class="btn btn-link btn-sm step-back" onclick="geriGit(2)">
+                        <i class="fas fa-arrow-left"></i> Geri
+                    </button>
+                </h4>
+                <div class="randevu-detay">
+                    <div class="selected-info mb-4">
+                        <p><strong>Seçilen Departman:</strong> <span id="secilenDepartman"></span></p>
+                        <p><strong>Seçilen Doktor:</strong> <span id="secilenDoktor"></span></p>
+                    </div>
+                    <form id="randevuForm">
+                        <input type="hidden" id="doktorId" name="doktor_id">
+                        <div class="form-group mb-3">
+                            <label for="tarih">Tarih:</label>
+                            <input type="date" class="form-control" id="tarih" name="tarih" required>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="saat">Saat:</label>
+                            <select class="form-control" id="saat" name="saat" required>
+                                <option value="">Saat Seçin</option>
+                                <!-- Saatler JavaScript ile doldurulacak -->
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-check"></i> Randevuyu Onayla
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let secilenDepartmanId = null;
+let secilenDoktorId = null;
+let secilenDoktorCalismaBaslangic = null;
+let secilenDoktorCalismaBitis = null;
+
+// Minimum tarih olarak bugünü ayarla
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('tarih').setAttribute('min', today);
+});
+
+function departmanSec(departmanId, departmanAd) {
+    secilenDepartmanId = departmanId;
+    document.getElementById('secilenDepartman').textContent = departmanAd;
+    
+    // Doktorları getir
+    fetch(`/doktorlar/${departmanId}`)
+        .then(response => response.json())
+        .then(data => {
+            const doktorListesi = document.getElementById('doktorListesi');
+            doktorListesi.innerHTML = '';
+            
+            data.forEach(doktor => {
+                const doktorCard = document.createElement('div');
+                doktorCard.className = 'doktor-card';
+                doktorCard.innerHTML = `
+                    <h5>Dr. ${doktor.ad} ${doktor.soyad}</h5>
+                    <p><i class="fas fa-stethoscope"></i> ${doktor.uzmanlik}</p>
+                    <p><i class="fas fa-clock"></i> Çalışma Saatleri: ${doktor.calisma_saatleri}</p>
+                    <button class="btn btn-primary" onclick="doktorSec('${doktor.id}', '${doktor.ad} ${doktor.soyad}', '${doktor.calisma_saatleri}')">
+                        <i class="fas fa-user-md"></i> Bu Doktoru Seç
+                    </button>
+                `;
+                doktorListesi.appendChild(doktorCard);
+            });
+            
+            // Adım 2'ye geç
+            adimGoster(2);
+        })
+        .catch(error => {
+            Swal.fire({
+                title: 'Hata!',
+                text: 'Doktorlar yüklenirken bir hata oluştu.',
+                icon: 'error'
+            });
+        });
+}
+
+function doktorSec(doktorId, doktorAdSoyad, calismaSaatleri) {
+    secilenDoktorId = doktorId;
+    document.getElementById('secilenDoktor').textContent = 'Dr. ' + doktorAdSoyad;
+    document.getElementById('doktorId').value = doktorId;
+    
+    // Çalışma saatlerini parse et
+    const [baslangic, bitis] = calismaSaatleri.split('-').map(saat => saat.trim());
+    secilenDoktorCalismaBaslangic = baslangic;
+    secilenDoktorCalismaBitis = bitis;
+    
+    // Saat seçeneklerini güncelle
+    saatSecenekleriniGuncelle();
+    
+    // Adım 3'e geç
+    adimGoster(3);
+}
+
+function saatSecenekleriniGuncelle() {
+    const saatSelect = document.getElementById('saat');
+    saatSelect.innerHTML = '<option value="">Saat Seçin</option>';
+    
+    const baslangicSaat = parseInt(secilenDoktorCalismaBaslangic.split(':')[0]);
+    const bitisSaat = parseInt(secilenDoktorCalismaBitis.split(':')[0]);
+    
+    for (let saat = baslangicSaat; saat <= bitisSaat; saat++) {
+        ['00', '30'].forEach(dakika => {
+            if (!(saat === bitisSaat && dakika === '30')) {
+                const saatStr = `${saat.toString().padStart(2, '0')}:${dakika}`;
+                saatSelect.add(new Option(saatStr, saatStr));
+            }
+        });
+    }
+}
+
+function geriGit(adim) {
+    adimGoster(adim);
+}
+
+function adimGoster(adimNo) {
+    document.querySelectorAll('.booking-step').forEach(step => {
+        step.classList.remove('active');
+    });
+    document.getElementById(`step${adimNo}`).classList.add('active');
+}
+
+// Randevu formu gönderimi
+document.getElementById('randevuForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        doktor_id: document.getElementById('doktorId').value,
+        tarih: document.getElementById('tarih').value,
+        saat: document.getElementById('saat').value
+    };
+    
+    fetch('/randevu_olustur', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire({
+                title: 'Başarılı!',
+                text: 'Randevunuz başarıyla oluşturuldu.',
+                icon: 'success'
+            }).then(() => {
+                window.location.href = '/patient_dashboard';
+            });
+        } else {
+            Swal.fire({
+                title: 'Hata!',
+                text: data.message || 'Randevu oluşturulurken bir hata oluştu.',
+                icon: 'error'
+            });
+        }
+    })
+    .catch(error => {
+        Swal.fire({
+            title: 'Hata!',
+            text: 'Bir hata oluştu.',
+            icon: 'error'
+        });
+    });
+});
+</script>
+
+<style>
+.booking-step {
+    display: none;
+}
+
+.booking-step.active {
+    display: block;
+}
+
+.step-title {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.step-number {
+    background-color: #3498db;
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    font-size: 0.9rem;
+}
+
+.step-back {
+    margin-left: auto;
+    color: #666;
+    text-decoration: none;
+}
+
+.departman-listesi, .doktor-listesi {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+}
+
+.departman-card, .doktor-card {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.departman-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.departman-card h5, .doktor-card h5 {
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+.departman-card p, .doktor-card p {
+    color: #666;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.doktor-card {
+    cursor: default;
+}
+
+.doktor-card p {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.doktor-card i {
+    color: #3498db;
+    width: 20px;
+}
+
+.selected-info {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.selected-info p {
+    margin-bottom: 0.5rem;
+}
+
+.selected-info p:last-child {
+    margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+    .departman-listesi, .doktor-listesi {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
