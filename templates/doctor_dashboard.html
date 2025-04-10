@@ -1,0 +1,906 @@
+{% extends "base.html" %}
+
+{% block title %}Doktor Paneli - Hastane Randevu Sistemi{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Hoş Geldiniz, Dr. {{ kullanici.ad }} {{ kullanici.soyad }}</h1>
+
+    <div class="dashboard-content">
+        <div class="profile-info">
+            <h2>Profil Bilgileri</h2>
+            <div class="info-card">
+                <p><strong>Ad Soyad:</strong> Dr. {{ kullanici.ad }} {{ kullanici.soyad }}</p>
+                <p><strong>E-posta:</strong> {{ kullanici.email }}</p>
+                <p><strong>Telefon:</strong> <span id="telefon-text">{{ kullanici.telefon }}</span></p>
+                <p><strong>Departman:</strong> <span id="departman-text">{{ kullanici.departman.ad if kullanici.departman else 'Belirtilmemiş' }}</span></p>
+                <p><strong>Uzmanlık:</strong> <span id="uzmanlik-text">{{ kullanici.uzmanlik or 'Belirtilmemiş' }}</span></p>
+                <p><strong>Çalışma Saatleri:</strong> <span id="calisma-saatleri-text">{{ kullanici.calisma_saatleri or 'Belirtilmemiş' }}</span></p>
+                
+                <button class="btn btn-primary" onclick="profilDuzenle()">Profili Düzenle</button>
+            </div>
+        </div>
+
+        <div class="appointments">
+            <h2>Randevularınız</h2>
+            
+            <div class="filter-section mb-4">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="btn-group w-100" role="group">
+                            <button class="btn btn-outline-primary active" onclick="filtreUygula('tumu')">
+                                <i class="fas fa-list"></i> Tümü
+                            </button>
+                            <button class="btn btn-outline-primary" onclick="bugununkiRandevular()">
+                                <i class="fas fa-calendar-day"></i> Bugün
+                            </button>
+                            <button class="btn btn-outline-info" onclick="filtreUygula('gecmis')">
+                                <i class="fas fa-history"></i> Geçmiş
+                            </button>
+                            <button class="btn btn-outline-success" onclick="filtreUygula('gelecek')">
+                                <i class="fas fa-calendar-alt"></i> Gelecek
+                            </button>
+                            <button class="btn btn-outline-success" onclick="filtreUygula('onaylandi')">
+                                <i class="fas fa-check"></i> Onaylanan
+                            </button>
+                            <button class="btn btn-outline-warning" onclick="filtreUygula('beklemede')">
+                                <i class="fas fa-clock"></i> Bekleyen
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="filtreUygula('iptal_edildi')">
+                                <i class="fas fa-times"></i> İptal Edilen
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input type="month" id="filterMonth" class="form-control" placeholder="Ay seçin">
+                            <button class="btn btn-secondary" onclick="ayaGoreFiltrele()">
+                                <i class="fas fa-calendar-alt"></i> Aya Göre
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input type="date" id="filterDate" class="form-control" placeholder="Tarih seçin">
+                            <button class="btn btn-secondary" onclick="tariheGoreFiltrele()">
+                                <i class="fas fa-filter"></i> Güne Göre
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if randevular %}
+                <div class="randevu-list">
+                    {% for randevu in randevular %}
+                        <div class="randevu-item" id="randevu-{{ randevu.id }}" data-tarih="{{ randevu.tarih.strftime('%Y-%m-%d') }}">
+                            <div class="randevu-details">
+                                <p><strong>Tarih:</strong> {{ randevu.tarih.strftime('%d.%m.%Y') }}</p>
+                                <p><strong>Saat:</strong> {{ randevu.saat }}</p>
+                                <p><strong>Hasta:</strong> {{ randevu.hasta.ad }} {{ randevu.hasta.soyad }}</p>
+                                <p><strong>Hasta Tel:</strong> {{ randevu.hasta.telefon }}</p>
+                                <p><strong>Durum:</strong> 
+                                    <span class="status status-{{ randevu.durum }}">
+                                        {{ randevu.durum.upper() }}
+                                    </span>
+                                </p>
+                                {% if randevu.notlar %}
+                                    <p><strong>Notlar:</strong> {{ randevu.notlar }}</p>
+                                {% endif %}
+                            </div>
+                            <div class="randevu-actions">
+                                {% if randevu.durum == 'beklemede' %}
+                                    <button class="btn btn-success" data-randevu-id="{{ randevu.id }}" data-durum="onaylandı">Onayla</button>
+                                    <button class="btn btn-danger" data-randevu-id="{{ randevu.id }}" data-durum="iptal_edildi">İptal Et</button>
+                                {% endif %}
+                                <button class="btn btn-primary randevu-duzenle-btn" 
+                                        data-randevu-id="{{ randevu.id }}"
+                                        data-tarih="{{ randevu.tarih.strftime('%Y-%m-%d') }}"
+                                        data-saat="{{ randevu.saat }}"
+                                        data-durum="{{ randevu.durum }}">
+                                    Düzenle
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="no-appointments">Henüz randevunuz bulunmamaktadır.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+// Profil düzenleme fonksiyonu (mevcut kod)
+function profilDuzenle() {
+    const mevcutTelefon = document.getElementById('telefon-text').textContent;
+    const mevcutUzmanlik = document.getElementById('uzmanlik-text').textContent;
+    const mevcutCalismaSaatleri = document.getElementById('calisma-saatleri-text').textContent;
+    const mevcutDepartman = document.getElementById('departman-text').textContent;
+
+    // Çalışma saatlerini parçala
+    let baslangicSaat = '09:00';
+    let bitisSaat = '17:00';
+    if (mevcutCalismaSaatleri !== 'Belirtilmemiş') {
+        const saatler = mevcutCalismaSaatleri.split(' - ');
+        if (saatler.length === 2) {
+            baslangicSaat = saatler[0];
+            bitisSaat = saatler[1];
+        }
+    }
+
+    // Saat seçeneklerini oluştur
+    const saatler = [];
+    for (let i = 8; i <= 19; i++) {
+        const saat = `${i.toString().padStart(2, '0')}:00`;
+        saatler.push(saat);
+        if (i < 19) {
+            saatler.push(`${i.toString().padStart(2, '0')}:30`);
+        }
+    }
+
+    const saatOptions = saatler.map(saat => 
+        `<option value="${saat}">${saat}</option>`
+    ).join('');
+
+    Swal.fire({
+        title: 'Profil Bilgilerini Düzenle',
+        html: `
+            <style>
+                .swal2-input, .swal2-select {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    margin: 0.5rem auto !important;
+                    height: 38px !important;
+                    font-size: 0.9rem !important;
+                }
+                .form-group {
+                    margin-bottom: 1rem;
+                    text-align: left;
+                }
+                .form-group label {
+                    display: block;
+                    margin-bottom: 0.3rem;
+                    font-weight: 500;
+                    font-size: 0.9rem;
+                    color: #333;
+                }
+                .calisma-saatleri-group {
+                    display: flex;
+                    gap: 1rem;
+                    align-items: center;
+                }
+                .calisma-saatleri-group select {
+                    flex: 0.8;
+                    width: auto !important;
+                    min-width: 100px !important;
+                }
+                .calisma-saatleri-group span {
+                    color: #666;
+                    padding: 0 0.5rem;
+                    flex: 0.1;
+                    text-align: center;
+                }
+                @media (max-width: 768px) {
+                    .calisma-saatleri-group {
+                        flex-direction: row;
+                        gap: 0.5rem;
+                    }
+                    .calisma-saatleri-group select {
+                        flex: 1;
+                    }
+                }
+            </style>
+            <div class="form-group">
+                <label for="telefon">Telefon:</label>
+                <input type="tel" id="telefon" class="swal2-input" value="${mevcutTelefon}" maxlength="13">
+            </div>
+            <div class="form-group">
+                <label for="departman">Departman:</label>
+                <select id="departman" class="swal2-select">
+                    <option value="">Departman Seçin</option>
+                    {% for departman in departmanlar %}
+                        <option value="{{ departman.id }}" 
+                            ${mevcutDepartman === "{{ departman.ad }}" ? 'selected' : ''}>
+                            {{ departman.ad }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="uzmanlik">Uzmanlık:</label>
+                <input type="text" id="uzmanlik" class="swal2-input" value="${mevcutUzmanlik === 'Belirtilmemiş' ? '' : mevcutUzmanlik}">
+            </div>
+            <div class="form-group">
+                <label>Çalışma Saatleri:</label>
+                <div class="calisma-saatleri-group">
+                    <select id="baslangic_saat" class="swal2-select">
+                        ${saatOptions}
+                    </select>
+                    <span>-</span>
+                    <select id="bitis_saat" class="swal2-select">
+                        ${saatOptions}
+                    </select>
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Güncelle',
+        cancelButtonText: 'İptal',
+        didOpen: () => {
+            // Mevcut saatleri seç
+            document.getElementById('baslangic_saat').value = baslangicSaat;
+            document.getElementById('bitis_saat').value = bitisSaat;
+        },
+        preConfirm: () => {
+            const baslangic = document.getElementById('baslangic_saat').value;
+            const bitis = document.getElementById('bitis_saat').value;
+            
+            if (baslangic >= bitis) {
+                Swal.showValidationMessage('Başlangıç saati bitiş saatinden önce olmalıdır');
+                return false;
+            }
+
+            return {
+                telefon: document.getElementById('telefon').value,
+                departman_id: document.getElementById('departman').value,
+                uzmanlik: document.getElementById('uzmanlik').value,
+                calisma_saatleri: `${baslangic} - ${bitis}`
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch('/doktor_profil_guncelle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(result.value)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire(
+                        'Başarılı!',
+                        data.message,
+                        'success'
+                    ).then(() => {
+                        // Sayfa içeriğini güncelle
+                        document.getElementById('telefon-text').textContent = data.kullanici.telefon;
+                        document.getElementById('departman-text').textContent = data.kullanici.departman || 'Belirtilmemiş';
+                        document.getElementById('uzmanlik-text').textContent = data.kullanici.uzmanlik || 'Belirtilmemiş';
+                        document.getElementById('calisma-saatleri-text').textContent = data.kullanici.calisma_saatleri || 'Belirtilmemiş';
+                    });
+                } else {
+                    Swal.fire(
+                        'Hata!',
+                        data.message,
+                        'error'
+                    );
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire(
+                    'Hata!',
+                    'Bir hata oluştu.',
+                    'error'
+                );
+            });
+        }
+    });
+}
+
+// Randevu düzenleme fonksiyonu
+function randevuDuzenle(randevuId, mevcutTarih, mevcutSaat, mevcutDurum) {
+    const calismaSaatleri = document.getElementById('calisma-saatleri-text').textContent;
+    if (calismaSaatleri === 'Belirtilmemiş') {
+        Swal.fire('Uyarı', 'Lütfen önce çalışma saatlerinizi belirleyin.', 'warning');
+        return;
+    }
+
+    const [baslangic, bitis] = calismaSaatleri.split(' - ');
+    let [baslamaHour, baslamaMinute] = baslangic.split(':').map(Number);
+    let [bitisHour, bitisMinute] = bitis.split(':').map(Number);
+
+    // Saat seçeneklerini oluştur
+    let saatOptions = '';
+    while (baslamaHour < bitisHour || (baslamaHour === bitisHour && baslamaMinute < bitisMinute)) {
+        const saat = `${baslamaHour.toString().padStart(2, '0')}:${baslamaMinute.toString().padStart(2, '0')}`;
+        saatOptions += `<option value="${saat}" ${saat === mevcutSaat ? 'selected' : ''}>${saat}</option>`;
+        
+        baslamaMinute += 30;
+        if (baslamaMinute >= 60) {
+            baslamaMinute = 0;
+            baslamaHour++;
+        }
+    }
+
+    Swal.fire({
+        title: 'Randevu Düzenle',
+        html: `
+            <div class="form-group">
+                <label for="tarih">Tarih:</label>
+                <input type="date" id="tarih" class="swal2-input" value="${mevcutTarih}" min="${new Date().toISOString().split('T')[0]}">
+            </div>
+            <div class="form-group">
+                <label for="saat">Saat:</label>
+                <select id="saat" class="swal2-input">
+                    ${saatOptions}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="durum">Durum:</label>
+                <select id="durum" class="swal2-input">
+                    <option value="beklemede" ${mevcutDurum === 'beklemede' ? 'selected' : ''}>Beklemede</option>
+                    <option value="onaylandı" ${mevcutDurum === 'onaylandı' ? 'selected' : ''}>Onaylandı</option>
+                    <option value="iptal_edildi" ${mevcutDurum === 'iptal_edildi' ? 'selected' : ''}>İptal Edildi</option>
+                </select>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Güncelle',
+        cancelButtonText: 'İptal',
+        preConfirm: () => {
+            return {
+                tarih: document.getElementById('tarih').value,
+                saat: document.getElementById('saat').value,
+                durum: document.getElementById('durum').value
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/randevu_guncelle/${randevuId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(result.value)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire('Başarılı!', data.message, 'success')
+                    .then(() => location.reload());
+                } else {
+                    Swal.fire('Hata!', data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire('Hata!', 'Bir hata oluştu.', 'error');
+            });
+        }
+    });
+}
+
+// Aya göre filtreleme fonksiyonu
+function ayaGoreFiltrele() {
+    const ay = document.getElementById('filterMonth').value;
+    if (!ay) {
+        Swal.fire('Uyarı', 'Lütfen bir ay seçin', 'warning');
+        return;
+    }
+
+    const [yil, ayNumara] = ay.split('-');
+    const baslangicTarihi = new Date(yil, ayNumara - 1, 1);
+    const bitisTarihi = new Date(yil, ayNumara, 0);
+
+    const randevular = document.querySelectorAll('.randevu-item');
+    let gorunenRandevuSayisi = 0;
+
+    randevular.forEach(randevu => {
+        const randevuTarihStr = randevu.getAttribute('data-tarih');
+        const [rYil, rAy, rGun] = randevuTarihStr.split('-').map(Number);
+        const randevuTarih = new Date(rYil, rAy - 1, rGun);
+
+        if (randevuTarih >= baslangicTarihi && randevuTarih <= bitisTarihi) {
+            randevu.style.display = 'block';
+            randevu.classList.add('highlight');
+            gorunenRandevuSayisi++;
+        } else {
+            randevu.style.display = 'none';
+            randevu.classList.remove('highlight');
+        }
+    });
+
+    // Filtre bilgisini göster
+    const filterInfo = document.querySelector('.filter-info');
+    const filterMessage = document.getElementById('filterMessage');
+    const ayAd = new Date(ay + '-01').toLocaleString('tr-TR', { month: 'long' });
+    filterMessage.textContent = `${ayAd} ${yil} ayına ait ${gorunenRandevuSayisi} randevu görüntüleniyor.`;
+    filterInfo.classList.remove('d-none');
+
+    // Diğer filtreleri sıfırla
+    document.getElementById('filterDate').value = '';
+}
+
+// Filtreleri sıfırlama fonksiyonu
+function filtreleriSifirla() {
+    document.getElementById('filterMonth').value = '';
+    document.getElementById('filterDate').value = '';
+    
+    document.querySelectorAll('.randevu-item').forEach(randevu => {
+        randevu.style.display = 'block';
+        randevu.classList.remove('highlight');
+    });
+
+    document.querySelector('.filter-info').classList.add('d-none');
+}
+
+// Tarihe göre filtrele
+function tariheGoreFiltrele() {
+    const secilenTarih = document.getElementById('filterDate').value;
+    if (!secilenTarih) {
+        filtreleriSifirla();
+        return;
+    }
+
+    // Ay filtresini sıfırla
+    document.getElementById('filterMonth').value = '';
+
+    const randevular = document.querySelectorAll('.randevu-item');
+    let gorunenRandevuSayisi = 0;
+
+    randevular.forEach(randevu => {
+        const randevuTarih = randevu.getAttribute('data-tarih');
+        if (randevuTarih === secilenTarih) {
+            randevu.style.display = 'block';
+            randevu.classList.add('highlight');
+            gorunenRandevuSayisi++;
+        } else {
+            randevu.style.display = 'none';
+            randevu.classList.remove('highlight');
+        }
+    });
+
+    // Filtre bilgisini göster
+    const filterInfo = document.querySelector('.filter-info');
+    const filterMessage = document.getElementById('filterMessage');
+    const formatliTarih = new Date(secilenTarih).toLocaleDateString('tr-TR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    });
+    filterMessage.textContent = `${formatliTarih} tarihine ait ${gorunenRandevuSayisi} randevu görüntüleniyor.`;
+    filterInfo.classList.remove('d-none');
+}
+
+// Bugünün randevularını gösterme fonksiyonunu güncelle
+function bugununkiRandevular() {
+    // Diğer filtreleri sıfırla
+    document.getElementById('filterMonth').value = '';
+    document.getElementById('filterDate').value = '';
+
+    const today = new Date().toISOString().split('T')[0];
+    const randevular = document.querySelectorAll('.randevu-item');
+    let gorunenRandevuSayisi = 0;
+    
+    randevular.forEach(randevu => {
+        const randevuTarih = randevu.getAttribute('data-tarih');
+        if (randevuTarih === today) {
+            randevu.style.display = 'block';
+            randevu.classList.add('highlight');
+            gorunenRandevuSayisi++;
+        } else {
+            randevu.style.display = 'none';
+            randevu.classList.remove('highlight');
+        }
+    });
+
+    // Filtre bilgisini göster
+    const filterInfo = document.querySelector('.filter-info');
+    const filterMessage = document.getElementById('filterMessage');
+    filterMessage.textContent = `Bugüne ait ${gorunenRandevuSayisi} randevu görüntüleniyor.`;
+    filterInfo.classList.remove('d-none');
+}
+
+// Randevu durumu güncelleme
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-randevu-id]').forEach(button => {
+        button.addEventListener('click', function() {
+            const randevuId = this.dataset.randevuId;
+            const yeniDurum = this.dataset.durum;
+            
+            Swal.fire({
+                title: 'Emin misiniz?',
+                text: yeniDurum === 'onaylandı' ? 
+                      "Bu randevuyu onaylamak istediğinize emin misiniz?" :
+                      "Bu randevuyu iptal etmek istediğinize emin misiniz?",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: yeniDurum === 'onaylandı' ? '#28a745' : '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: yeniDurum === 'onaylandı' ? 'Evet, Onayla' : 'Evet, İptal Et',
+                cancelButtonText: 'Vazgeç'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/randevu_guncelle/${randevuId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            durum: yeniDurum
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                title: 'Başarılı!',
+                                text: data.message,
+                                icon: 'success'
+                            }).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire({
+                                title: 'Hata!',
+                                text: data.message || 'Bir hata oluştu.',
+                                icon: 'error'
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            title: 'Hata!',
+                            text: 'Bir hata oluştu.',
+                            icon: 'error'
+                        });
+                    });
+                }
+            });
+        });
+    });
+});
+
+// Randevu düzenleme için event listener ekle
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.randevu-duzenle-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const randevuId = this.dataset.randevuId;
+            const mevcutTarih = this.dataset.tarih;
+            const mevcutSaat = this.dataset.saat;
+            const mevcutDurum = this.dataset.durum;
+            randevuDuzenle(randevuId, mevcutTarih, mevcutSaat, mevcutDurum);
+        });
+    });
+});
+
+function filtreUygula(tip) {
+    // Butonların aktif durumunu güncelle
+    document.querySelectorAll('.btn-group .btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+
+    const bugun = new Date();
+    bugun.setHours(0, 0, 0, 0);
+
+    const randevular = document.querySelectorAll('.randevu-item');
+    let gorunenRandevuSayisi = 0;
+
+    randevular.forEach(randevu => {
+        const durum = randevu.querySelector('.status').textContent.trim().toLowerCase();
+        const randevuTarih = new Date(randevu.dataset.tarih);
+        randevuTarih.setHours(0, 0, 0, 0);
+        let goster = false;
+
+        switch(tip) {
+            case 'tumu':
+                goster = true;
+                break;
+            case 'gecmis':
+                goster = randevuTarih < bugun;
+                break;
+            case 'gelecek':
+                goster = randevuTarih > bugun;
+                break;
+            case 'onaylandi':
+                goster = durum === 'onaylandi';
+                break;
+            case 'beklemede':
+                goster = durum === 'beklemede';
+                break;
+            case 'iptal_edildi':
+                goster = durum === 'iptal_edildi';
+                break;
+        }
+
+        if (goster) {
+            randevu.style.display = 'block';
+            gorunenRandevuSayisi++;
+        } else {
+            randevu.style.display = 'none';
+        }
+    });
+
+    // Filtre bilgisini göster
+    const filterInfo = document.querySelector('.filter-info');
+    const filterMessage = document.getElementById('filterMessage');
+    let mesaj = '';
+    switch(tip) {
+        case 'tumu':
+            mesaj = `Toplam ${gorunenRandevuSayisi} randevu görüntüleniyor.`;
+            break;
+        case 'gecmis':
+            mesaj = `${gorunenRandevuSayisi} geçmiş randevu görüntüleniyor.`;
+            break;
+        case 'gelecek':
+            mesaj = `${gorunenRandevuSayisi} gelecek randevu görüntüleniyor.`;
+            break;
+        case 'onaylandi':
+            mesaj = `${gorunenRandevuSayisi} onaylanmış randevu görüntüleniyor.`;
+            break;
+        case 'beklemede':
+            mesaj = `${gorunenRandevuSayisi} bekleyen randevu görüntüleniyor.`;
+            break;
+        case 'iptal_edildi':
+            mesaj = `${gorunenRandevuSayisi} iptal edilmiş randevu görüntüleniyor.`;
+            break;
+    }
+    filterMessage.textContent = mesaj;
+    filterInfo.classList.remove('d-none');
+}
+
+// Sayfa yüklendiğinde
+document.addEventListener('DOMContentLoaded', () => {
+    filtreUygula('tumu');
+});
+</script>
+
+<style>
+.dashboard-content {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.filter-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+.filter-section .row {
+    align-items: stretch;
+}
+
+.filter-section .btn {
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    height: 38px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.filter-section .input-group {
+    height: 38px;
+}
+
+.filter-section .form-control {
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    height: 38px;
+    font-size: 0.9rem;
+}
+
+.filter-section .input-group .form-control {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    flex: 1.5;
+}
+
+.filter-section .input-group .btn {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    flex: 1;
+    font-size: 0.9rem;
+}
+
+.filter-section .col-md-3,
+.filter-section .col-md-6 {
+    display: flex;
+}
+
+.filter-section .input-group {
+    width: 100%;
+    display: flex;
+}
+
+.filter-section .btn i {
+    font-size: 0.9rem;
+    margin-right: 0.3rem;
+}
+
+@media (max-width: 768px) {
+    .dashboard-content {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-section .row > div {
+        margin-bottom: 1rem;
+    }
+
+    .filter-section .input-group {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .filter-section .input-group .form-control,
+    .filter-section .input-group .btn {
+        width: 100%;
+        border-radius: 6px;
+        margin: 0;
+        height: 38px;
+    }
+
+    .filter-section .input-group .form-control {
+        margin-bottom: 0.5rem;
+    }
+}
+
+.filter-info {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    margin: 0;
+    border-radius: 6px;
+    background-color: #e3f2fd;
+    border: 1px solid #90caf9;
+}
+
+.filter-info .btn-link {
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.filter-info .btn-link:hover {
+    text-decoration: underline;
+}
+
+.info-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.randevu-item {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.randevu-item.highlight {
+    border: 2px solid var(--primary-color);
+    transform: scale(1.02);
+}
+
+.status {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.status-beklemede { background-color: #ffd700; color: #000; }
+.status-onaylandı { background-color: #4caf50; color: white; }
+.status-iptal_edildi { background-color: #f44336; color: white; }
+
+.randevu-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+    flex-wrap: wrap;
+}
+
+.randevu-actions .btn {
+    padding: 0.5rem 1rem;
+    min-width: 100px;
+    font-weight: 500;
+}
+
+@media (max-width: 768px) {
+    .dashboard-content {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-section .row {
+        gap: 1rem;
+    }
+
+    .filter-section .input-group {
+        flex-direction: column;
+    }
+
+    .filter-section .input-group .form-control,
+    .filter-section .input-group .btn {
+        width: 100%;
+    }
+
+    .randevu-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .randevu-actions .btn {
+        width: 100%;
+    }
+}
+
+.btn-group .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+}
+
+.btn-group .btn i {
+    font-size: 0.9rem;
+}
+
+.btn-group .btn.active {
+    box-shadow: inset 0 3px 5px rgba(0,0,0,.125);
+}
+
+.filter-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.filter-section .input-group {
+    height: 38px;
+}
+
+.filter-section .form-control {
+    border-radius: 4px 0 0 4px;
+}
+
+.filter-section .btn {
+    border-radius: 0 4px 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .btn-group .btn {
+        width: 100%;
+        margin: 0;
+        border-radius: 4px !important;
+        margin-bottom: 0.5rem;
+    }
+
+    .input-group {
+        margin-bottom: 1rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% endblock %}
